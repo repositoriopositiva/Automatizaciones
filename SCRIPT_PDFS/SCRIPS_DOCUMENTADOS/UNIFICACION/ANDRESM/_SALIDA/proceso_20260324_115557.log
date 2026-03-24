@@ -1,0 +1,5 @@
+2026-03-24 11:55:57,512  INFO      'INFORME 05 DICIEMBRE-2025 0688-2025' -> Unificado Incompleto conds={'pila', 'calidad'}
+2026-03-24 11:55:57,844  INFO      'INFORME 06 DICIEMBRE-2025 0628-2025' -> Unificado Incompleto conds={'pila', 'calidad'}
+2026-03-24 11:55:58,138  INFO      'INFORME 06 DICIEMBRE-2025 0644-2025' -> Unificado Completo conds={'pila', 'calidad'}
+2026-03-24 11:55:58,657  INFO      'INFORME 06 DICIEMBRE-2025 0655-2025' -> Unificado Completo conds={'pila', 'calidad'}
+2026-03-24 11:55:58,854  INFO      'INFORME 06 DICIEMBRE-2025 0660-2025' -> Unificado Completo conds=set()
