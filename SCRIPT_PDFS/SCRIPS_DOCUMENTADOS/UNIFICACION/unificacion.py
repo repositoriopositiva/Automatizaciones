@@ -38,7 +38,7 @@ POSICIONES = {
     "2":   {"nombre": "Carátula Obligaciones",
              "keywords": ["caratula obligaciones","car obligaciones"],
              "requerido": True,  "depende_de": None},
-    "3":   {"nombre": "Obligaciones Grales y Especificas",
+    "3":   {"nombre": "Obligaciones Generales y Especificas",
              "keywords": ["obligaciones generales","obligaciones especificas",
                           "evaluacion de obligaciones","oblig generales"],
              "requerido": True,  "depende_de": None},
@@ -145,7 +145,7 @@ ORDEN_FIJAS = [
     "10","11",
     "12","12a","12b",
     "13",
-    "13a","13b","13c","13d","13e",   # visita (subtipo detectado automáticamente)
+    "13a","13c","13b","13d","13e",   # visita (subtipo detectado automáticamente)
     "14",
     # <<< comunicaciones múltiples se insertan aquí >>>
     "16a",
@@ -166,7 +166,7 @@ DETECTORES = {
 
 # Keywords para archivos múltiples
 KW_COMUNICACIONES = ["comunicaciones","comunicacion_","comunicaciones_"]
-KW_OTROS          = ["otros1","otros2","otros3","otros4","otros5",
+KW_OTROS          = ["otros1","otros1","otros2","otros3","otros4","otros5",
                      "otros_1","otros_2","otros_3","otros_4","otros_5",
                      "otros 1","otros 2","otros 3","otros 4","otros 5"]
 

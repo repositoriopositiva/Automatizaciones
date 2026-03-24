@@ -12,36 +12,8 @@ from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
 
 # ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
+# 🔍 BUSCAR ARCHIVO EXCEL
 # ==========================================================
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-
-
-mes_encuesta = "Enero 2026" 
-
-
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-
-# ==========================================================
-# 📅 DEFINIR MES DE ENCUESTA (TEXTO LIBRE)
-# ==========================================================
-
 archivos_excel = [f for f in os.listdir() if f.lower().endswith(".xlsx")]
 
 if not archivos_excel:
@@ -50,9 +22,6 @@ if not archivos_excel:
 
 nombre_archivo = archivos_excel[0]
 print(f"📄 Excel detectado: {nombre_archivo}")
-
-
-
 
 # ==========================================================
 # 📖 LEER EXCEL
@@ -113,7 +82,6 @@ if not (idx_cedula < idx_nombre < idx_contrato):
 # ==========================================================
 # 📊 DETECTAR PREGUNTAS VARIABLES
 # ==========================================================
-# Todas las columnas entre Nombre y Contrato son preguntas
 columnas_preguntas = df.columns[idx_nombre+1 : idx_contrato].tolist()
 
 if len(columnas_preguntas) == 0:
@@ -123,9 +91,14 @@ if len(columnas_preguntas) == 0:
     print("| Cédula | Nombre | Preguntas variables | Contrato | Razón Social | ... |\n")
     sys.exit()
 
+# ==========================================================
+# 📅 DETECTAR FECHA DESDE EXCEL
+# ==========================================================
+# La primera columna después de Nombre (columna C) se toma como fecha
+col_fecha = columnas_preguntas[0]
+
 # Columnas finales que se exportarán
 columnas_respuestas = [col_cedula, col_nombre] + columnas_preguntas
-
 
 # ==========================================================
 # 📂 CARPETA SALIDA
@@ -154,6 +127,26 @@ for (contrato, razon), grupo in grupos:
 
     if pd.isna(contrato) or pd.isna(razon):
         continue
+
+    # ======================================================
+    # 📅 OBTENER FECHA DESDE EXCEL
+    # ======================================================
+    fecha_elaboracion = grupo.iloc[0][col_fecha]
+
+    if pd.notna(fecha_elaboracion):
+
+        # Si ya viene como texto (ej: "febrero 2026")
+        if isinstance(fecha_elaboracion, str):
+            fecha_elaboracion = fecha_elaboracion.strip()
+
+        else:
+            try:
+                fecha_elaboracion = pd.to_datetime(fecha_elaboracion).strftime("%B %Y")
+            except:
+                fecha_elaboracion = str(fecha_elaboracion)
+
+    else:
+        fecha_elaboracion = ""
 
     nombre_pdf = f"{contrato} SOPORTES DE MEDICION"
     ruta_pdf = os.path.join(carpeta_salida, f"{nombre_pdf}.pdf")
@@ -195,9 +188,8 @@ for (contrato, razon), grupo in grupos:
 
     elementos.append(Paragraph(f"<b>Contrato:</b> {contrato}", estilos["Normal"]))
     elementos.append(Paragraph(f"<b>Razón Social:</b> {razon}", estilos["Normal"]))
-    elementos.append(Paragraph(f"<b>Periodo Evaluado:</b> {mes_encuesta}", estilos["Normal"]))
+    elementos.append(Paragraph(f"<b>Periodo Evaluado:</b> {fecha_elaboracion}", estilos["Normal"]))
     elementos.append(Spacer(1, 0.3 * inch))
-
 
     # ======================================================
     # TABLA DE RESPUESTAS
@@ -215,7 +207,9 @@ for (contrato, razon), grupo in grupos:
             fila_formateada.append(Paragraph(texto, estilo_celda))
         datos_tabla.append(fila_formateada)
 
-    # Anchos inteligentes
+    # ======================================================
+    # ANCHOS DE COLUMNAS
+    # ======================================================
     total_width = doc.width
     anchos = []
 
@@ -250,4 +244,4 @@ for (contrato, razon), grupo in grupos:
 
     doc.build(elementos)
 
-print("✅ PDFs generados correctamente con logo")
+print("✅ PDFs generados correctamente con fecha tomada desde el Excel")
