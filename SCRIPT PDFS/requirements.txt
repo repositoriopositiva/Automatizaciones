@@ -1,7 +1,0 @@
-pandas
-openpyxl
-reportlab
-python-docx
-pywin32
-fpdf
-Pillow
