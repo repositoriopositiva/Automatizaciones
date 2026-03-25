@@ -1,0 +1,5 @@
+2026-03-25 10:27:04,832  INFO      'INFORME 11 DICIEMBRE-2025 0222-2025' -> Unificado Incompleto conds={'efectiva', 'consumo', 'calidad', 'visita'}
+2026-03-25 10:27:04,993  INFO      'INFORME 12 DICIEMBRE-2025 0215-2024' -> Unificado Completo conds={'pila', 'calidad'}
+2026-03-25 10:27:05,090  INFO      'INFORME 12 DICIEMBRE-2025 0662-2024' -> Unificado Incompleto conds={'visita', 'inasistencia', 'calidad'}
+2026-03-25 10:27:05,192  INFO      'INFORME 12 DICIEMBRE-2025 0739-2024' -> Unificado Completo conds={'pila', 'consumo', 'calidad'}
+2026-03-25 10:27:05,251  INFO      'INFORME 12 DICIEMBRE-2025 0910-2024' -> Unificado Completo conds={'visita', 'escalamiento'}

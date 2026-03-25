@@ -17,20 +17,6 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  POSICIONES
-#
-#  depende_de:
-#    None          → siempre aplica
-#    "pila"        → solo si hay soporte pago pila (pos 9 presente)
-#    "calidad"     → solo si hay medición de calidad (5a/5b/5c presente)
-#    "visita"      → solo si hay visita (cualquier subtipo)
-#    "efectiva"    → solo si la visita es EFECTIVA
-#    "escalamiento"→ solo si la visita es ESCALAMIENTO
-#    "inasistencia"→ solo si la visita es INASISTENCIA
-#    "protesis"    → solo si hay registro sanitario o certificado almacenamiento
-# ══════════════════════════════════════════════════════════════════════
-
 POSICIONES = {
     "1":   {"nombre": "Informe Técnico",
              "keywords": ["informe tecnico","inf tecnico"],
@@ -40,18 +26,19 @@ POSICIONES = {
              "requerido": True,  "depende_de": None},
     "3":   {"nombre": "Obligaciones Generales y Especificas",
              "keywords": ["obligaciones generales","obligaciones especificas",
-                          "evaluacion de obligaciones","oblig generales"],
+                          "evaluacion de obligaciones","oblig generales",
+                          "evaluacion obligaciones contractuales"],
              "requerido": True,  "depende_de": None},
     "4":   {"nombre": "Carátula Resultados Medición",
              "keywords": ["caratula resultados","car resultados"],
              "requerido": True,  "depende_de": None},
     "5":   {"nombre": "Acta Indicadores de Gestión",
              "keywords": ["indicadores de gestion","indicadores gestion",
-                          "acta indicadores gestion"],
+                          "acta indicadores gestion","acta indicadores de gestion"],
              "requerido": True,  "depende_de": None},
     "5a":  {"nombre": "Acta Indicadores de Calidad",
              "keywords": ["indicadores de calidad","acta indicadores calidad",
-                          "indicadores-calidad"],
+                          "indicadores calidad"],
              "requerido": False, "depende_de": "calidad"},
     "5b":  {"nombre": "Carátula Soportes de Medición",
              "keywords": ["caratula soportes de medicion","caratula soportes medicion",
@@ -71,7 +58,7 @@ POSICIONES = {
              "keywords": ["caratula soporte pila","car pila","caratula soporte pago pila"],
              "requerido": False, "depende_de": "pila"},
     "9":   {"nombre": "Soporte Pago PILA",
-             "keywords": ["soporte pago pila","soporte pila","pago pila","soporte pago pila_1","soporte pago pila_2"],
+             "keywords": ["soporte pago pila","soporte pila","pago pila"],
              "requerido": False, "depende_de": None},
     "10":  {"nombre": "Carátula Autorizaciones",
              "keywords": ["caratula autorizaciones","car autorizaciones"],
@@ -100,7 +87,7 @@ POSICIONES = {
              "keywords": ["soporte visita","soporte de visita"],
              "requerido": False, "depende_de": "efectiva"},
     "13c": {"nombre": "Plantilla Visita (Efectiva)",
-             "keywords": ["plantilla visita","plantilla de visita"],
+             "keywords": ["plantilla visita","plantilla de visita","planilla visita"],
              "requerido": False, "depende_de": "efectiva"},
     # Escalamiento
     "13d": {"nombre": "Requerimiento (Escalamiento)",
@@ -110,16 +97,21 @@ POSICIONES = {
     "13e": {"nombre": "Acta de Inasistencia",
              "keywords": ["acta de inasistencia","acta inasistencia"],
              "requerido": False, "depende_de": "inasistencia"},
+    # ── SECCIÓN CONSUMO (después de visita, antes de comunicaciones) ──
+    "13f": {"nombre": "Carátula Consumo",
+             "keywords": ["caratula consumo","car consumo"],
+             "requerido": False, "depende_de": "consumo"},
+    "13g": {"nombre": "Acta de Consumo",
+             "keywords": ["acta consumo","acta de consumo"],
+             "requerido": False, "depende_de": None},
     # ── SECCIÓN COMUNICACIONES ────────────────────────────────────────
     "14":  {"nombre": "Carátula Comunicación",
              "keywords": ["caratula comunicacion","car comunicacion"],
              "requerido": False, "depende_de": None},
     # pos 15 = comunicaciones múltiples → manejado por lógica variable
     # ── SECCIÓN OTROS ────────────────────────────────────────────────
-
-
     "16a": {"nombre": "Carátula Otros (sección final)",
-             "keywords": [],   # solo se incluye desde caratulas compartidas si hay "otros"
+             "keywords": [],
              "requerido": False, "depende_de": None},
     # pos 16 = otros múltiples → manejado por lógica variable
     "16b": {"nombre": "Pantallazo SARLAFT",
@@ -136,7 +128,6 @@ POSICIONES = {
              "requerido": False, "depende_de": None},
 }
 
-# Orden final en el PDF
 ORDEN_FIJAS = [
     "1","2","3","4",
     "5","5a","5b","5c",
@@ -145,7 +136,8 @@ ORDEN_FIJAS = [
     "10","11",
     "12","12a","12b",
     "13",
-    "13a","13c","13b","13d","13e",   # visita (subtipo detectado automáticamente)
+    "13a","13c","13b","13d","13e",   # visita
+    "13f","13g",                      # consumo (entre visita y comunicaciones)
     "14",
     # <<< comunicaciones múltiples se insertan aquí >>>
     "16a",
@@ -153,7 +145,6 @@ ORDEN_FIJAS = [
     "16b","17","18","19",
 ]
 
-# Qué archivos activan cada condición
 DETECTORES = {
     "visita":       {"13a","13b","13c","13d","13e"},
     "efectiva":     {"13b","13c"},
@@ -162,11 +153,11 @@ DETECTORES = {
     "calidad":      {"5a","5b","5c"},
     "protesis":     {"12a","12b"},
     "pila":         {"9"},
+    "consumo":      {"13g"},   # carátula consumo solo si hay acta de consumo
 }
 
-# Keywords para archivos múltiples
 KW_COMUNICACIONES = ["comunicaciones","comunicacion_","comunicaciones_"]
-KW_OTROS          = ["otros1","otros1","otros2","otros3","otros4","otros5",
+KW_OTROS          = ["otros1","otros2","otros3","otros4","otros5",
                      "otros_1","otros_2","otros_3","otros_4","otros_5",
                      "otros 1","otros 2","otros 3","otros 4","otros 5"]
 
@@ -178,10 +169,16 @@ EXCLUIR = {"caratulas","_salida"}
 # ══════════════════════════════════════════════════════════════════════
 
 def norm(t):
+    """Normaliza: minúsculas, sin tildes, guiones/underscores → espacio."""
     tabla = str.maketrans(
         "áéíóúäëïöüàèìòùÁÉÍÓÚÄËÏÖÜÀÈÌÒÙñÑ",
         "aeiouaeiouaeiouAEIOUAEIOUAEIOUnN")
-    return t.lower().translate(tabla)
+    t = t.lower().translate(tabla)
+    t = t.replace("-", " ").replace("_", " ")
+    while "  " in t:
+        t = t.replace("  ", " ")
+    return t.strip()
+    
 
 def identificar_pos(nombre):
     """Devuelve el ID de posición del archivo. Gana la keyword más larga."""
@@ -194,6 +191,7 @@ def identificar_pos(nombre):
                 largo = len(kw_n)
                 mejor = pid
     return mejor
+
 
 def es_comunicacion(nombre):
     stem = norm(Path(nombre).stem)
@@ -240,20 +238,12 @@ def fusionar(lista, destino):
         return False, errores + [str(e)]
 
 def detectar_condiciones(pdfs):
-    """
-    Detecta condiciones activas según los archivos presentes.
-    - pila:    si pos 9 está presente
-    - efectiva/escalamiento/inasistencia: mutuamente excluyentes según archivo
-    - visita:  si cualquier subtipo está activo
-    - calidad, protesis: por presencia de sus posiciones
-    """
     activas = set()
     for p in pdfs:
         pos = identificar_pos(p.name)
         for cond, triggers in DETECTORES.items():
             if pos in triggers:
                 activas.add(cond)
-    # visita general = cualquier subtipo
     if activas & {"efectiva","escalamiento","inasistencia"}:
         activas.add("visita")
     return activas
@@ -266,8 +256,8 @@ def detectar_condiciones(pdfs):
 def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
     nombre = carpeta_informe.name
     res = {
-        "informe":       nombre,
-        "posiciones":    {
+        "informe":        nombre,
+        "posiciones":     {
             pid: {"nombre": info["nombre"], "archivo": None,
                   "presente": False, "depende_de": info["depende_de"],
                   "estado_celda": "?"}
@@ -289,7 +279,7 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
     # 2. Listar PDFs
     pdfs = pdfs_de(carpeta_informe)
 
-    # 3. Detectar condiciones (incluyendo pila, visita, subtipos)
+    # 3. Detectar condiciones
     res["condiciones"] = detectar_condiciones(pdfs)
 
     # 4. Mapear cada PDF a su posición / comunicaciones / otros
@@ -309,17 +299,17 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
             res["sin_posicion"].append(pdf.name)
 
     # 5. Completar carátulas faltantes con las compartidas
-    #    EXCEPCIÓN: carátula PILA (pos 8) solo se completa si hay soporte PILA
-    caratula_otros_compartida = None   # guardamos para usarla en sección Otros
+    caratula_otros_compartida = None
     for pdf in pdfs_de(carpeta_caratulas):
-        # Detectar carátula otros compartida por nombre (ya no tiene posición fija)
         if any(norm(kw) in norm(pdf.stem) for kw in ["caratula otros","car otros"]):
             caratula_otros_compartida = pdf
         pos = identificar_pos(pdf.name)
         if not pos:
             continue
         if pos == "8" and "pila" not in res["condiciones"]:
-            continue   # no agregar caratula pila si no hay soporte
+            continue
+        if pos == "13f" and "consumo" not in res["condiciones"]:
+            continue   # carátula consumo solo si hay acta de consumo
         if not res["posiciones"][pos]["presente"]:
             res["posiciones"][pos]["archivo"]  = pdf
             res["posiciones"][pos]["presente"] = True
@@ -332,8 +322,7 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
         dep    = info["depende_de"]
         aplica = (dep is None) or (dep in res["condiciones"])
 
-        # Carátula sección "otros" (16a): solo si hay al menos un documento
-        # de la sección: archivos múltiples, SARLAFT(16b), RIPS(17), Ind.Cal.(18), Ev.Adv.(19)
+        # Carátula sección Otros (16a): solo si hay algún doc en esa sección
         if pid == "16a":
             hay_otros = (
                 bool(res["otros"])
@@ -345,7 +334,6 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
             if not hay_otros:
                 info["estado_celda"] = "N/A"
                 continue
-            # Si no tiene carátula propia, usar la compartida
             if not info["presente"] and caratula_otros_compartida:
                 info["archivo"]  = caratula_otros_compartida
                 info["presente"] = True
@@ -362,10 +350,8 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
             if POSICIONES[pid]["requerido"] or (dep and dep in res["condiciones"]):
                 faltantes.append(pid)
 
-        # Insertar comunicaciones después de pos 14
         if pid == "14":
             lista_merge.extend(res["comunicaciones"])
-        # Insertar otros después de pos 16a
         if pid == "16a":
             lista_merge.extend(res["otros"])
 
@@ -393,6 +379,7 @@ AZ="1F4E79"; VE="C6EFCE"; VEF="375623"
 AM="FFEB9C"; AMF="7D6608"; RO="FFC7CE"; ROF="9C0006"
 GR="EDEDED"; GRF="595959"
 VER_OSC="2E6B3E"; NA_OSC="7D4E00"; CA_OSC="5D4037"
+CO_OSC="6A1B4D"   # morado oscuro = consumo
 
 def mk_borde():
     s = Side(style="thin", color="AAAAAA")
@@ -410,7 +397,8 @@ def cel(ws, r, c, v="", bold=False, sz=9, ct="000000",
 def color_hdr(pid):
     dep = POSICIONES.get(pid, {}).get("depende_de")
     if pid in ("comunicaciones","otros","14","16a"): return CA_OSC
-    if dep in ("calidad",):                          return VER_OSC
+    if pid in ("13f","13g"):                         return CO_OSC
+    if dep == "calidad":                             return VER_OSC
     if dep in ("visita","efectiva","escalamiento","inasistencia"): return NA_OSC
     return AZ
 
@@ -425,7 +413,6 @@ def generar_excel(resultados, nombre_analista, ruta):
     wb = Workbook(); ws = wb.active; ws.title = "Reporte"
     B = mk_borde()
 
-    # Título
     ws.merge_cells("A1:D1")
     ws["A1"] = f"Reporte de unificación — {nombre_analista}"
     ws["A1"].font      = Font(name="Arial", bold=True, size=13, color=AZ)
@@ -437,21 +424,23 @@ def generar_excel(resultados, nombre_analista, ruta):
     ws.row_dimensions[1].height = 22
 
     FH=3; CI=1; CP0=2
-    N = len(ORDEN_EXCEL)
-    CE   = CP0 + N      # ESTADO
-    CV   = CE + 1       # VISITA
-    CTV  = CV + 1       # TIPO VISITA
-    CQ   = CTV + 1      # CALIDAD
-    CPR  = CQ + 1       # PROT/ORT
-    CPIL = CPR + 1      # PILA
-    CO   = CPIL + 1     # OBSERVACIONES
+    N    = len(ORDEN_EXCEL)
+    CE   = CP0 + N
+    CV   = CE + 1
+    CTV  = CV + 1
+    CQ   = CTV + 1
+    CPR  = CQ + 1
+    CPIL = CPR + 1
+    CCON = CPIL + 1   # CONSUMO
+    CO   = CCON + 1   # OBSERVACIONES
 
     cel(ws, FH, CI, "INFORME / RESPONSABLE", bold=True, sz=9, ct="FFFFFF", fc=AZ, bd=B)
     for i, pid in enumerate(ORDEN_EXCEL):
         cel(ws, FH, CP0+i, label_col(pid), bold=True, sz=8,
             ct="FFFFFF", fc=color_hdr(pid), bd=B)
     for col, lbl in [(CE,"ESTADO"),(CV,"VISITA"),(CTV,"TIPO VISITA"),
-                     (CQ,"CALIDAD"),(CPR,"PROT/ORT"),(CPIL,"PILA"),(CO,"OBSERVACIONES")]:
+                     (CQ,"CALIDAD"),(CPR,"PROT/ORT"),(CPIL,"PILA"),
+                     (CCON,"CONSUMO"),(CO,"OBSERVACIONES")]:
         cel(ws, FH, col, lbl, bold=True, sz=9, ct="FFFFFF", fc=AZ, bd=B)
     ws.row_dimensions[FH].height = 52
 
@@ -479,14 +468,13 @@ def generar_excel(resultados, nombre_analista, ruta):
             else:           fc,ft,bo = None,"000000",False
             cel(ws, row, col, ec, bold=bo, sz=9, ct=ft, fc=fc, bd=B)
 
-        # Columnas de estado
         est = res["estado"]
         fe,ft = ((VE,VEF) if "Completo" in est and "In" not in est else
                  (AM,AMF) if "Incompleto" in est else (RO,ROF))
         cel(ws, row, CE, est, bold=True, sz=9, ct=ft, fc=fe, bd=B)
 
         conds = res.get("condiciones", set())
-        cel(ws, row, CV, "SÍ" if "visita" in conds else "NO", sz=9, bd=B)
+        cel(ws, row, CV,   "SÍ" if "visita"  in conds else "NO", sz=9, bd=B)
 
         tipo_v = ("EFECTIVA"     if "efectiva"     in conds else
                   "ESCALAMIENTO" if "escalamiento" in conds else
@@ -494,13 +482,13 @@ def generar_excel(resultados, nombre_analista, ruta):
         tv_color = ("375623" if tipo_v=="EFECTIVA" else
                     "7D4E00" if tipo_v=="ESCALAMIENTO" else
                     "9C0006" if tipo_v=="INASISTENCIA" else GRF)
-        cel(ws, row, CTV, tipo_v, bold=(tipo_v!="—"), sz=9, ct=tv_color, bd=B)
-
+        cel(ws, row, CTV,  tipo_v, bold=(tipo_v!="—"), sz=9, ct=tv_color, bd=B)
         cel(ws, row, CQ,   "SÍ" if "calidad"  in conds else "NO", sz=9, bd=B)
         cel(ws, row, CPR,  "SÍ" if "protesis" in conds else "NO", sz=9, bd=B)
-        cel(ws, row, CPIL,
-            "SÍ" if "pila" in conds else "NO", sz=9,
+        cel(ws, row, CPIL, "SÍ" if "pila"     in conds else "NO", sz=9,
             ct=("375623" if "pila" in conds else "9C0006"), bd=B)
+        cel(ws, row, CCON, "SÍ" if "consumo"  in conds else "NO", sz=9,
+            ct=("375623" if "consumo" in conds else GRF), bd=B)
 
         obs = []
         if res.get("sin_posicion"):
@@ -511,7 +499,6 @@ def generar_excel(resultados, nombre_analista, ruta):
             obs.append("Errores: " + "; ".join(res["errores_pdf"]))
         cel(ws, row, CO, " | ".join(obs), sz=8, ha="left", bd=B)
 
-    # Anchos de columna
     ws.column_dimensions[get_column_letter(CI)].width   = 44
     for i in range(N):
         ws.column_dimensions[get_column_letter(CP0+i)].width = 11
@@ -521,10 +508,10 @@ def generar_excel(resultados, nombre_analista, ruta):
     ws.column_dimensions[get_column_letter(CQ)].width   = 10
     ws.column_dimensions[get_column_letter(CPR)].width  = 11
     ws.column_dimensions[get_column_letter(CPIL)].width = 8
+    ws.column_dimensions[get_column_letter(CCON)].width = 10
     ws.column_dimensions[get_column_letter(CO)].width   = 55
     ws.freeze_panes = ws.cell(FH+1, CP0)
 
-    # Resumen
     fl = FH + len(resultados) + 3
     completos   = sum(1 for r in resultados if r["estado"]=="Unificado Completo")
     incompletos = sum(1 for r in resultados if "Incompleto" in r["estado"])
@@ -534,7 +521,6 @@ def generar_excel(resultados, nombre_analista, ruta):
     ws.cell(fl+3, CI, f"Incomp.   : {incompletos}").font     = Font(name="Arial", size=9, color=AMF)
     ws.cell(fl+4, CI, f"Error     : {len(resultados)-completos-incompletos}").font = Font(name="Arial", size=9, color=ROF)
 
-    # Leyenda
     fl2 = fl + 6
     ws.cell(fl2, CI, "LEYENDA:").font = Font(name="Arial", bold=True, size=9)
     for j, (lbl, fc, ft, desc) in enumerate([
@@ -552,6 +538,7 @@ def generar_excel(resultados, nombre_analista, ruta):
         ("Siempre",    AZ,      "Obligatorio en todos los informes"),
         ("Calidad",    VER_OSC, "Solo si hay medición de calidad (5a/5b/5c)"),
         ("Visita",     NA_OSC,  "Solo si hubo visita (efectiva/escalamiento/inasistencia)"),
+        ("Consumo",    CO_OSC,  "Solo si hay Acta de Consumo (13f carátula + 13g acta)"),
         ("Com/Otros",  CA_OSC,  "Comunicaciones y Otros (archivos múltiples)"),
     ]):
         col = CI+1+j*2
@@ -571,9 +558,9 @@ def main(ruta_raiz_str):
         print(f"\n[ERROR] La ruta no existe: {ruta_raiz_str}"); sys.exit(1)
 
     nombre_analista   = raiz.name
-    carpeta_caratulas = raiz / "caratulas"
+    carpeta_caratulas = raiz.parent / "caratulas"
     if not carpeta_caratulas.exists():
-        print("[AVISO] No se encontró la carpeta 'caratulas'.")
+        print(f"[AVISO] No se encontró la carpeta 'caratulas' en: {carpeta_caratulas}")
 
     carpeta_salida = raiz / "_SALIDA"
     carpeta_pdfs   = carpeta_salida / "PDFs_unificados"
@@ -613,6 +600,7 @@ def main(ruta_raiz_str):
         if "protesis" in conds: info_str += " [protesis/ortesis]"
         if "pila"     in conds: info_str += " [pila]"
         else:                   info_str += " [sin pila]"
+        if "consumo"  in conds: info_str += " [consumo]"
         n_com = len(res["comunicaciones"])
         n_otr = len(res["otros"])
         if n_com: info_str += f" [{n_com} comunic.]"
@@ -652,7 +640,7 @@ EJMP:   python unificacion.py "C:\\daniel"
 ESTRUCTURA:
   analista\\
     caratulas\\
-    informe 1\\   <- PDFs con palabras clave en el nombre
+    informe 1\\
     informe 2\\
     ...
 
