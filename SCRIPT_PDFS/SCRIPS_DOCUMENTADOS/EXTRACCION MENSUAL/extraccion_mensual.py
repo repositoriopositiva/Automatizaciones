@@ -4,14 +4,11 @@ Procesa la carpeta ANALISTAS (estructura: ANALISTAS > RESPONSABLE > INFORME XX M
   1. Recorre todas las subcarpetas de informe dentro de ANALISTAS
   2. Mueve Excel de informes técnicos → INFORMES TECNICOS ENERO
   3. Mueve Excel de obligaciones      → OBLIGACIONES CONTRACTUALES ENERO
-
-Ubicación esperada (todo en la misma carpeta):
-  extraccion_mensual.py
-  ANALISTAS/  (carpeta con subcarpetas de analistas y contratos)
 """
 
 import shutil
 from pathlib import Path
+import re
 
 # ─────────────────────────────────────────────
 # CONFIGURACIÓN
@@ -21,19 +18,38 @@ CARPETA_ANALISTAS    = BASE_DIR / "ANALISTAS"
 CARPETA_INF_TEC      = BASE_DIR / "INFORMES TECNICOS ENERO"
 CARPETA_OBLIGACIONES = BASE_DIR / "OBLIGACIONES CONTRACTUALES ENERO"
 
+# CAMBIAR MANUALMENTE CADA MES
+MES_EVALUADO = "MARZO 2026"
+
+
 # ─────────────────────────────────────────────
-# FUNCIÓN AUXILIAR
+# FUNCIONES AUXILIARES
 # ─────────────────────────────────────────────
 
 def normalizar(texto: str) -> str:
     return str(texto).strip().lower()
 
 
-def mover_sin_colision(origen: Path, carpeta_destino: Path) -> Path:
-    """Mueve archivo; si ya existe en destino agrega sufijo _dup."""
-    destino = carpeta_destino / origen.name
+def obtener_contrato(nombre_carpeta: str):
+    """
+    Extrae número de contrato tipo 0106-2023
+    """
+    patron = r"\d{3,5}-\d{4}"
+    match = re.search(patron, nombre_carpeta)
+    if match:
+        return match.group()
+    return "CONTRATO_DESCONOCIDO"
+
+
+def mover_renombrando(origen: Path, carpeta_destino: Path, nuevo_nombre: str):
+    """
+    Mueve archivo renombrándolo
+    """
+    destino = carpeta_destino / nuevo_nombre
+
     if destino.exists():
-        destino = carpeta_destino / f"{origen.stem}_dup{origen.suffix}"
+        destino = carpeta_destino / f"{destino.stem}_dup{destino.suffix}"
+
     shutil.move(str(origen), str(destino))
     return destino
 
@@ -51,7 +67,6 @@ def main():
         print(f"\n❌ No se encontró la carpeta: {CARPETA_ANALISTAS}")
         return
 
-    # Crear carpetas destino si no existen
     CARPETA_INF_TEC.mkdir(exist_ok=True)
     CARPETA_OBLIGACIONES.mkdir(exist_ok=True)
 
@@ -61,49 +76,72 @@ def main():
     oblig_movidos   = []
     sin_clasificar  = []
 
-    # Nivel 1: responsables (ANDRES, MAURICIO, etc.)
+    # Nivel 1: responsables
     for responsable_dir in sorted(CARPETA_ANALISTAS.iterdir()):
         if not responsable_dir.is_dir():
             continue
 
-        # Nivel 2: carpetas de informe (INFORME 02 FEBRERO 2026 0106-2023)
+        # Nivel 2: carpetas de informe
         for informe_dir in sorted(responsable_dir.iterdir()):
             if not informe_dir.is_dir():
                 continue
 
-            # Nivel 3: archivos Excel dentro de cada carpeta de informe
+            contrato = obtener_contrato(informe_dir.name)
+
             excels = list(informe_dir.glob("*.xlsx")) + list(informe_dir.glob("*.xls"))
 
             for archivo in excels:
                 if not archivo.is_file():
                     continue
+
                 nombre_norm = normalizar(archivo.name)
 
+                # ── INFORME TECNICO ─────────────────────
                 if "informe tecnico" in nombre_norm or "informe técnico" in nombre_norm:
-                    mover_sin_colision(archivo, CARPETA_INF_TEC)
-                    inf_tec_movidos.append(archivo.name)
-                    print(f"  ✔ Téc  [{responsable_dir.name}] {archivo.name}")
 
+                    nuevo_nombre = f"{contrato} - INFORME TECNICO - {MES_EVALUADO}{archivo.suffix}"
+
+                    mover_renombrando(
+                        archivo,
+                        CARPETA_INF_TEC,
+                        nuevo_nombre
+                    )
+
+                    inf_tec_movidos.append(nuevo_nombre)
+                    print(f"  ✔ Téc  [{responsable_dir.name}] {nuevo_nombre}")
+
+                # ── OBLIGACIONES CONTRACTUALES ───────────
                 elif ("obligaciones contractuales" in nombre_norm or
                       "ogligaciones contractuales" in nombre_norm):
-                    mover_sin_colision(archivo, CARPETA_OBLIGACIONES)
-                    oblig_movidos.append(archivo.name)
-                    print(f"  ✔ Obl  [{responsable_dir.name}] {archivo.name}")
+
+                    nuevo_nombre = f"{contrato} - EVALUACION DE OBLIGACIONES - {MES_EVALUADO}{archivo.suffix}"
+
+                    mover_renombrando(
+                        archivo,
+                        CARPETA_OBLIGACIONES,
+                        nuevo_nombre
+                    )
+
+                    oblig_movidos.append(nuevo_nombre)
+                    print(f"  ✔ Obl  [{responsable_dir.name}] {nuevo_nombre}")
 
                 else:
                     sin_clasificar.append(archivo.name)
                     print(f"  ⚠ Sin clasificar [{responsable_dir.name}]: {archivo.name}")
 
-    # ── Resumen final ──────────────────────────────────────
+    # ── RESUMEN ─────────────────────────────
     print("\n" + "=" * 60)
     print("  RESUMEN FINAL")
     print("=" * 60)
+
     print(f"  📁 INFORMES TECNICOS ENERO           : {len(inf_tec_movidos)} archivos")
     print(f"  📁 OBLIGACIONES CONTRACTUALES ENERO  : {len(oblig_movidos)} archivos")
+
     if sin_clasificar:
         print(f"\n  ⚠ Sin clasificar ({len(sin_clasificar)}):")
         for f in sin_clasificar:
             print(f"     - {f}")
+
     print("\n  ✅ Script 2 finalizado.\n")
 
 
