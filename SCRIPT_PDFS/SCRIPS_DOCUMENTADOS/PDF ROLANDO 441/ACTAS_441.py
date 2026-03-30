@@ -71,7 +71,6 @@ for idx, row in df.iterrows():
        
     i = i+1
     contrato = row["campob"]  # campo2 → campob
-    fecha_nombre = row["campoy"]  # campo2 → campob
     print(f"➡ Generando {i}/{total_registros} → contrato: {contrato}")
 
 
