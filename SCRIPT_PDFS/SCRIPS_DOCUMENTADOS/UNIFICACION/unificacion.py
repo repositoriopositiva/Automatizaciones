@@ -37,7 +37,7 @@ POSICIONES = {
                           "acta indicadores gestion","acta indicadores de gestion"],
              "requerido": True,  "depende_de": None},
     "5a":  {"nombre": "Acta Indicadores de Calidad",
-             "keywords": ["indicadores de calidad","acta indicadores calidad",
+             "keywords": ["indicadores de calidad","acta de calidad",
                           "indicadores calidad"],
              "requerido": False, "depende_de": "calidad"},
     "5b":  {"nombre": "Carátula Soportes de Medición",

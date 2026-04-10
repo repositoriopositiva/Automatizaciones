@@ -9,6 +9,7 @@ Procesa la carpeta ANALISTAS (estructura: ANALISTAS > RESPONSABLE > INFORME XX M
 import shutil
 from pathlib import Path
 import re
+import unicodedata
 
 # ─────────────────────────────────────────────
 # CONFIGURACIÓN
@@ -16,7 +17,7 @@ import re
 BASE_DIR             = Path(__file__).parent
 CARPETA_ANALISTAS    = BASE_DIR / "ANALISTAS"
 CARPETA_INF_TEC      = BASE_DIR / "INFORMES TECNICOS ENERO"
-CARPETA_OBLIGACIONES = BASE_DIR / "OBLIGACIONES CONTRACTUALES ENERO"
+CARPETA_OBLIGACIONES = BASE_DIR / "EVALUACION OBLIGACIONES CONTRACTUALES ENERO"
 
 # CAMBIAR MANUALMENTE CADA MES
 MES_EVALUADO = "MARZO 2026"
@@ -27,7 +28,15 @@ MES_EVALUADO = "MARZO 2026"
 # ─────────────────────────────────────────────
 
 def normalizar(texto: str) -> str:
-    return str(texto).strip().lower()
+    """
+    Quita tildes, espacios extra y pasa a minúsculas
+    """
+    texto = str(texto).strip().lower()
+
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = texto.encode("ascii", "ignore").decode("ascii")
+
+    return texto
 
 
 def obtener_contrato(nombre_carpeta: str):
@@ -97,7 +106,7 @@ def main():
                 nombre_norm = normalizar(archivo.name)
 
                 # ── INFORME TECNICO ─────────────────────
-                if "informe tecnico" in nombre_norm or "informe técnico" in nombre_norm:
+                if "informe" in nombre_norm and "tecnico" in nombre_norm:
 
                     nuevo_nombre = f"{contrato} - INFORME TECNICO - {MES_EVALUADO}{archivo.suffix}"
 
@@ -111,10 +120,10 @@ def main():
                     print(f"  ✔ Téc  [{responsable_dir.name}] {nuevo_nombre}")
 
                 # ── OBLIGACIONES CONTRACTUALES ───────────
-                elif ("obligaciones contractuales" in nombre_norm or
-                      "ogligaciones contractuales" in nombre_norm):
+                elif ("obligacion" in nombre_norm or
+                      "obligaciones" in nombre_norm):
 
-                    nuevo_nombre = f"{contrato} - EVALUACION DE OBLIGACIONES - {MES_EVALUADO}{archivo.suffix}"
+                    nuevo_nombre = f"{contrato} - EVALUACION DE OBLIGACIONES CONTRACTUALES - {MES_EVALUADO}{archivo.suffix}"
 
                     mover_renombrando(
                         archivo,
@@ -147,3 +156,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
