@@ -21,8 +21,8 @@ print(f"📄 Excel detectado: {nombre_archivo}")
 # ==================================================
 # CONFIGURACIÓN
 # ==================================================
-plantilla_word = "plantilla 4 indicadores.docx"
-carpeta_pdf = "PDF_generados"
+plantilla_word = "3 indicadores.docx"
+carpeta_pdf = "ACTAS DE 3 INDICADORES"
 carpeta_temp = "temp_word"
 
 os.makedirs(carpeta_pdf, exist_ok=True)
@@ -81,7 +81,7 @@ try:
 
         nombre_pdf = (
             f"{limpiar_nombre(datos.get('campod', ''))} "
-            f"ACTA DE CALIDAD"
+            f" ACTA DE CALIDAD"
         )
 
         ruta_word = os.path.abspath(os.path.join(carpeta_temp, f"temp_{i}.docx"))

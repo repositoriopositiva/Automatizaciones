@@ -21,8 +21,8 @@ print(f"📄 Excel detectado: {nombre_archivo}")
 # ==================================================
 # CONFIGURACIÓN
 # ==================================================
-plantilla_word = "plantilla 4 indicadores.docx"
-carpeta_pdf = "PDF_generados"
+plantilla_word = "4 indicadores.docx"
+carpeta_pdf = "ACTAS DE 4 INDICADORES"
 carpeta_temp = "temp_word"
 
 os.makedirs(carpeta_pdf, exist_ok=True)

@@ -22,7 +22,7 @@ print(f"📄 Excel detectado: {nombre_archivo}")
 # CONFIGURACIÓN
 # ==================================================
 plantilla_word = "plantilla sin autorizaciones.docx"
-carpeta_pdf = "PDF_generados"
+carpeta_pdf = "ACTAS SIN AUTORIZACIONES"
 carpeta_temp = "temp_word"
 
 os.makedirs(carpeta_pdf, exist_ok=True)

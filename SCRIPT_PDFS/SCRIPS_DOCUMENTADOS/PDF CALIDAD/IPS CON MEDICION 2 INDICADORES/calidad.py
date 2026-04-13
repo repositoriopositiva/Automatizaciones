@@ -21,8 +21,8 @@ print(f"📄 Excel detectado: {nombre_archivo}")
 # ==================================================
 # CONFIGURACIÓN
 # ==================================================
-plantilla_word = "plantilla 4 indicadores.docx"
-carpeta_pdf = "ACTAS DE 4 INDICADORES"
+plantilla_word = "2 indicadores.docx"
+carpeta_pdf = "ACTAS DE 2 INDICADORES"
 carpeta_temp = "temp_word"
 
 os.makedirs(carpeta_pdf, exist_ok=True)
@@ -80,12 +80,9 @@ try:
         reemplazar_campos(doc, datos)
 
         nombre_pdf = (
-            f"{limpiar_nombre(datos.get('campod', ''))}_"
-            f"{limpiar_nombre(datos.get('campoc', ''))}_"
-            f"INDICADORES DE CALIDAD_"
-            f"{limpiar_nombre(datos.get('campot', ''))}_2025.pdf"
+            f"{limpiar_nombre(datos.get('campod', ''))} "
+            f" ACTA DE CALIDAD"
         )
-
         ruta_word = os.path.abspath(os.path.join(carpeta_temp, f"temp_{i}.docx"))
         ruta_pdf = os.path.abspath(os.path.join(carpeta_pdf, nombre_pdf))
 
