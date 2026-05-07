@@ -19,9 +19,6 @@ CARPETA_ANALISTAS    = BASE_DIR / "ANALISTAS"
 CARPETA_INF_TEC      = BASE_DIR / "INFORMES TECNICOS ENERO"
 CARPETA_OBLIGACIONES = BASE_DIR / "EVALUACION OBLIGACIONES CONTRACTUALES ENERO"
 
-# CAMBIAR MANUALMENTE CADA MES
-MES_EVALUADO = "MARZO 2026"
-
 
 # ─────────────────────────────────────────────
 # FUNCIONES AUXILIARES
@@ -32,10 +29,8 @@ def normalizar(texto: str) -> str:
     Quita tildes, espacios extra y pasa a minúsculas
     """
     texto = str(texto).strip().lower()
-
     texto = unicodedata.normalize("NFKD", texto)
     texto = texto.encode("ascii", "ignore").decode("ascii")
-
     return texto
 
 
@@ -63,6 +58,18 @@ def mover_renombrando(origen: Path, carpeta_destino: Path, nuevo_nombre: str):
     return destino
 
 
+def solicitar_mes_evaluado() -> str:
+    """
+    Solicita al usuario el mes evaluado por consola y valida que no esté vacío.
+    Formato esperado: MES AÑO (ej: ABRIL 2026)
+    """
+    while True:
+        mes = input("\n  Ingrese el MES EVALUADO (ej: ABRIL 2026): ").strip().upper()
+        if mes:
+            return mes
+        print("  ⚠ El mes evaluado no puede estar vacío. Intente de nuevo.")
+
+
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
@@ -71,6 +78,10 @@ def main():
     print("=" * 60)
     print("  SCRIPT 2 - Extracción desde ANALISTAS")
     print("=" * 60)
+
+    # ── INGRESO DEL MES POR CONSOLA ─────────────
+    MES_EVALUADO = solicitar_mes_evaluado()
+    print(f"\n  📅 Mes evaluado: {MES_EVALUADO}")
 
     if not CARPETA_ANALISTAS.exists():
         print(f"\n❌ No se encontró la carpeta: {CARPETA_ANALISTAS}")
@@ -143,8 +154,8 @@ def main():
     print("  RESUMEN FINAL")
     print("=" * 60)
 
-    print(f"  📁 INFORMES TECNICOS ENERO           : {len(inf_tec_movidos)} archivos")
-    print(f"  📁 OBLIGACIONES CONTRACTUALES ENERO  : {len(oblig_movidos)} archivos")
+    print(f"  📁 TECNICO            : {len(inf_tec_movidos)} archivos")
+    print(f"  📁 OBLIGACIONES    : {len(oblig_movidos)} archivos")
 
     if sin_clasificar:
         print(f"\n  ⚠ Sin clasificar ({len(sin_clasificar)}):")
@@ -156,4 +167,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

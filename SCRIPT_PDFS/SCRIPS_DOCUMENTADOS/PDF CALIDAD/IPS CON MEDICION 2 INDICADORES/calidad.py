@@ -81,7 +81,7 @@ try:
 
         nombre_pdf = (
             f"{limpiar_nombre(datos.get('campod', ''))} "
-            f" ACTA DE CALIDAD"
+            f" ACTA DE CALIDAD CON MEDICION"
         )
         ruta_word = os.path.abspath(os.path.join(carpeta_temp, f"temp_{i}.docx"))
         ruta_pdf = os.path.abspath(os.path.join(carpeta_pdf, nombre_pdf))

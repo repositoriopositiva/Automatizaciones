@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 r"""
 ╔══════════════════════════════════════════════════════════════════════╗
-║         UNIFICADOR DE PDFs POR CONTRATO  v6.0                       ║
+║         UNIFICADOR DE PDFs POR CONTRATO  v6.1                       ║
 ║                                                                      ║
 ║  Uso:  python unificacion.py "C:\ruta\analista"                      ║
 ║  Req:  pip install pypdf openpyxl                                    ║
@@ -36,17 +36,21 @@ POSICIONES = {
              "keywords": ["indicadores de gestion","indicadores gestion",
                           "acta indicadores gestion","acta indicadores de gestion"],
              "requerido": True,  "depende_de": None},
+    # ── 5a: presente si hay calidad (con o sin medición) ─────────────
     "5a":  {"nombre": "Acta Indicadores de Calidad",
-             "keywords": ["indicadores de calidad","acta de calidad",
+             "keywords": ["acta de calidad con medicion",
+                          "acta de calidad sin medicion",
+                          "indicadores de calidad",
                           "indicadores calidad"],
              "requerido": False, "depende_de": "calidad"},
+    # ── 5b/5c: solo cuando el acta es CON medición ───────────────────
     "5b":  {"nombre": "Carátula Soportes de Medición",
              "keywords": ["caratula soportes de medicion","caratula soportes medicion",
                           "car soportes medicion"],
-             "requerido": False, "depende_de": "calidad"},
+             "requerido": False, "depende_de": "calidad_con_medicion"},
     "5c":  {"nombre": "Soportes de Medición",
              "keywords": ["soportes de medicion","soportes medicion"],
-             "requerido": False, "depende_de": "calidad"},
+             "requerido": False, "depende_de": "calidad_con_medicion"},
     "6":   {"nombre": "Carátula Relación de Pagos",
              "keywords": ["caratula relacion de pagos","caratula relacion pagos",
                           "car relacion pagos"],
@@ -146,15 +150,19 @@ ORDEN_FIJAS = [
 ]
 
 DETECTORES = {
-    "visita":       {"13a","13b","13c","13d","13e"},
-    "efectiva":     {"13b","13c"},
-    "escalamiento": {"13d"},
-    "inasistencia": {"13e"},
-    "calidad":      {"5a","5b","5c"},
-    "protesis":     {"12a","12b"},
-    "pila":         {"9"},
-    "consumo":      {"13g"},   # carátula consumo solo si hay acta de consumo
+    "visita":               {"13a","13b","13c","13d","13e"},
+    "efectiva":             {"13b","13c"},
+    "escalamiento":         {"13d"},
+    "inasistencia":         {"13e"},
+    "calidad":              {"5a","5b","5c"},
+    "protesis":             {"12a","12b"},
+    "pila":                 {"9"},
+    "consumo":              {"13g"},
 }
+
+# Keywords que distinguen el tipo de acta de calidad
+KW_CALIDAD_CON = "acta de calidad con medicion"
+KW_CALIDAD_SIN = "acta de calidad sin medicion"
 
 KW_COMUNICACIONES = ["comunicaciones","comunicacion_","comunicaciones_"]
 KW_OTROS          = ["otros1","otros2","otros3","otros4","otros5",
@@ -178,7 +186,7 @@ def norm(t):
     while "  " in t:
         t = t.replace("  ", " ")
     return t.strip()
-    
+
 
 def identificar_pos(nombre):
     """Devuelve el ID de posición del archivo. Gana la keyword más larga."""
@@ -191,6 +199,16 @@ def identificar_pos(nombre):
                 largo = len(kw_n)
                 mejor = pid
     return mejor
+
+
+def es_calidad_con_medicion(nombre):
+    """True si el archivo es un acta de calidad CON medición."""
+    return norm(KW_CALIDAD_CON) in norm(Path(nombre).stem)
+
+
+def es_calidad_sin_medicion(nombre):
+    """True si el archivo es un acta de calidad SIN medición."""
+    return norm(KW_CALIDAD_SIN) in norm(Path(nombre).stem)
 
 
 def es_comunicacion(nombre):
@@ -238,12 +256,33 @@ def fusionar(lista, destino):
         return False, errores + [str(e)]
 
 def detectar_condiciones(pdfs):
+    """
+    Detecta condiciones activas.
+
+    Lógica de calidad:
+      - 'calidad'             → hay algún acta de calidad (con o sin medición)
+      - 'calidad_con_medicion'→ el acta se llama "acta de calidad con medicion"
+      - 'calidad_sin_medicion'→ el acta se llama "acta de calidad sin medicion"
+
+    Cuando es sin medición, 5b y 5c dependen de 'calidad_con_medicion'
+    (que no estará activa), por lo que quedan en N/A automáticamente.
+    """
     activas = set()
     for p in pdfs:
         pos = identificar_pos(p.name)
+
+        # Detectar sub-tipo de acta de calidad directamente del nombre
+        if pos == "5a":
+            activas.add("calidad")          # siempre que haya acta de calidad
+            if es_calidad_con_medicion(p.name):
+                activas.add("calidad_con_medicion")
+            elif es_calidad_sin_medicion(p.name):
+                activas.add("calidad_sin_medicion")
+
         for cond, triggers in DETECTORES.items():
             if pos in triggers:
                 activas.add(cond)
+
     if activas & {"efectiva","escalamiento","inasistencia"}:
         activas.add("visita")
     return activas
@@ -279,7 +318,7 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
     # 2. Listar PDFs
     pdfs = pdfs_de(carpeta_informe)
 
-    # 3. Detectar condiciones
+    # 3. Detectar condiciones (incluye calidad_con_medicion / calidad_sin_medicion)
     res["condiciones"] = detectar_condiciones(pdfs)
 
     # 4. Mapear cada PDF a su posición / comunicaciones / otros
@@ -309,7 +348,7 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
         if pos == "8" and "pila" not in res["condiciones"]:
             continue
         if pos == "13f" and "consumo" not in res["condiciones"]:
-            continue   # carátula consumo solo si hay acta de consumo
+            continue
         if not res["posiciones"][pos]["presente"]:
             res["posiciones"][pos]["archivo"]  = pdf
             res["posiciones"][pos]["presente"] = True
@@ -398,7 +437,7 @@ def color_hdr(pid):
     dep = POSICIONES.get(pid, {}).get("depende_de")
     if pid in ("comunicaciones","otros","14","16a"): return CA_OSC
     if pid in ("13f","13g"):                         return CO_OSC
-    if dep == "calidad":                             return VER_OSC
+    if dep in ("calidad","calidad_con_medicion"):    return VER_OSC
     if dep in ("visita","efectiva","escalamiento","inasistencia"): return NA_OSC
     return AZ
 
@@ -429,17 +468,19 @@ def generar_excel(resultados, nombre_analista, ruta):
     CV   = CE + 1
     CTV  = CV + 1
     CQ   = CTV + 1
-    CPR  = CQ + 1
+    CTCQ = CQ + 1    # TIPO CALIDAD (con/sin medición)
+    CPR  = CTCQ + 1
     CPIL = CPR + 1
-    CCON = CPIL + 1   # CONSUMO
-    CO   = CCON + 1   # OBSERVACIONES
+    CCON = CPIL + 1
+    CO   = CCON + 1  # OBSERVACIONES
 
     cel(ws, FH, CI, "INFORME / RESPONSABLE", bold=True, sz=9, ct="FFFFFF", fc=AZ, bd=B)
     for i, pid in enumerate(ORDEN_EXCEL):
         cel(ws, FH, CP0+i, label_col(pid), bold=True, sz=8,
             ct="FFFFFF", fc=color_hdr(pid), bd=B)
     for col, lbl in [(CE,"ESTADO"),(CV,"VISITA"),(CTV,"TIPO VISITA"),
-                     (CQ,"CALIDAD"),(CPR,"PROT/ORT"),(CPIL,"PILA"),
+                     (CQ,"CALIDAD"),(CTCQ,"TIPO CALIDAD"),
+                     (CPR,"PROT/ORT"),(CPIL,"PILA"),
                      (CCON,"CONSUMO"),(CO,"OBSERVACIONES")]:
         cel(ws, FH, col, lbl, bold=True, sz=9, ct="FFFFFF", fc=AZ, bd=B)
     ws.row_dimensions[FH].height = 52
@@ -483,7 +524,19 @@ def generar_excel(resultados, nombre_analista, ruta):
                     "7D4E00" if tipo_v=="ESCALAMIENTO" else
                     "9C0006" if tipo_v=="INASISTENCIA" else GRF)
         cel(ws, row, CTV,  tipo_v, bold=(tipo_v!="—"), sz=9, ct=tv_color, bd=B)
-        cel(ws, row, CQ,   "SÍ" if "calidad"  in conds else "NO", sz=9, bd=B)
+
+        # Calidad: SÍ / NO
+        cel(ws, row, CQ,   "SÍ" if "calidad" in conds else "NO", sz=9, bd=B)
+
+        # Tipo calidad: CON MEDICIÓN / SIN MEDICIÓN / —
+        if "calidad_con_medicion" in conds:
+            tipo_cq, cq_color = "CON MEDICIÓN", VEF
+        elif "calidad_sin_medicion" in conds:
+            tipo_cq, cq_color = "SIN MEDICIÓN", AMF
+        else:
+            tipo_cq, cq_color = "—", GRF
+        cel(ws, row, CTCQ, tipo_cq, bold=(tipo_cq!="—"), sz=9, ct=cq_color, bd=B)
+
         cel(ws, row, CPR,  "SÍ" if "protesis" in conds else "NO", sz=9, bd=B)
         cel(ws, row, CPIL, "SÍ" if "pila"     in conds else "NO", sz=9,
             ct=("375623" if "pila" in conds else "9C0006"), bd=B)
@@ -506,6 +559,7 @@ def generar_excel(resultados, nombre_analista, ruta):
     ws.column_dimensions[get_column_letter(CV)].width   = 9
     ws.column_dimensions[get_column_letter(CTV)].width  = 15
     ws.column_dimensions[get_column_letter(CQ)].width   = 10
+    ws.column_dimensions[get_column_letter(CTCQ)].width = 14
     ws.column_dimensions[get_column_letter(CPR)].width  = 11
     ws.column_dimensions[get_column_letter(CPIL)].width = 8
     ws.column_dimensions[get_column_letter(CCON)].width = 10
@@ -579,7 +633,7 @@ def main(ruta_raiz_str):
 
     sep = "═"*64
     print(f"\n{sep}")
-    print(f"  UNIFICADOR DE PDFs  v6.0  —  Analista: {nombre_analista}")
+    print(f"  UNIFICADOR DE PDFs  v6.1  —  Analista: {nombre_analista}")
     print(f"{sep}")
     print(f"  Raiz     : {raiz}")
     print(f"  Informes : {len(informes)}")
@@ -596,7 +650,10 @@ def main(ruta_raiz_str):
         if   "efectiva"     in conds: info_str += " [visita:EFECTIVA]"
         elif "escalamiento" in conds: info_str += " [visita:ESCALAMIENTO]"
         elif "inasistencia" in conds: info_str += " [visita:INASISTENCIA]"
-        if "calidad"  in conds: info_str += " [calidad]"
+        # Calidad: mostrar sub-tipo
+        if "calidad_con_medicion" in conds: info_str += " [calidad:CON MEDICIÓN]"
+        elif "calidad_sin_medicion" in conds: info_str += " [calidad:SIN MEDICIÓN]"
+        elif "calidad" in conds: info_str += " [calidad]"
         if "protesis" in conds: info_str += " [protesis/ortesis]"
         if "pila"     in conds: info_str += " [pila]"
         else:                   info_str += " [sin pila]"
