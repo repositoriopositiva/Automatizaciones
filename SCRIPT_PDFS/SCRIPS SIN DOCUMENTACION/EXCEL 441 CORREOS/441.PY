@@ -21,8 +21,8 @@ print(f"📄 Excel detectado: {nombre_archivo}")
 # ==========================================================
 # 📂 CONFIGURACIÓN SEGÚN TU EXCEL
 # ==========================================================
-columna_nit = "nit"
-columna_razon = "razon social"
+columna_nit = "NIT"
+columna_razon = "RAZON SOCIAL"
 carpeta_salida = "EXCEL_POR_NIT"
 
 os.makedirs(carpeta_salida, exist_ok=True)

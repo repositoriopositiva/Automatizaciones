@@ -67,7 +67,7 @@ df["NOMBRE_CARPETA"] = df.apply(crear_nombre_carpeta, axis=1)
 # ------------------------------------------------------
 carpeta_base = os.getcwd()
 
-repo_david = os.path.join(carpeta_base, "TECNICO")
+repo_david = os.path.join(carpeta_base, "TECNICOS")
 repo_tecnico = os.path.join(carpeta_base, "OBLIGACIONES")
 
 repositorio_excels = {}
