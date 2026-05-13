@@ -154,7 +154,7 @@ def main():
     print("  RESUMEN FINAL")
     print("=" * 60)
 
-    print(f"  📁 TECNICO            : {len(inf_tec_movidos)} archivos")
+    print(f"  📁 TECNICOS            : {len(inf_tec_movidos)} archivos")
     print(f"  📁 OBLIGACIONES    : {len(oblig_movidos)} archivos")
 
     if sin_clasificar:
