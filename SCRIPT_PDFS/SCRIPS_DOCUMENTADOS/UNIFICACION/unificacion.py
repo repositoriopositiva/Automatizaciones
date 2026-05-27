@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 r"""
 ╔══════════════════════════════════════════════════════════════════════╗
-║         UNIFICADOR DE PDFs POR CONTRATO  v6.2                       ║
+║         UNIFICADOR DE PDFs POR CONTRATO  v6.3                       ║
 ║                                                                      ║
 ║  Uso:  python unificacion.py "C:\ruta\analista"                      ║
 ║  Req:  pip install pypdf openpyxl                                    ║
@@ -51,10 +51,7 @@ POSICIONES = {
     "5c":  {"nombre": "Soportes de Medición",
              "keywords": ["soportes de medicion","soportes medicion"],
              "requerido": False, "depende_de": "calidad_con_medicion"},
-    # ── 5d: Indicadores 441 (opcional, sin dependencia) ──────────────
-    "5d":  {"nombre": "Indicadores 441",
-             "keywords": ["indicadores 441"],
-             "requerido": False, "depende_de": None},
+    # ── 5d: Indicadores 441 → lógica variable (múltiples), NO está aquí
     "6":   {"nombre": "Carátula Relación de Pagos",
              "keywords": ["caratula relacion de pagos","caratula relacion pagos",
                           "car relacion pagos"],
@@ -136,9 +133,11 @@ POSICIONES = {
              "requerido": False, "depende_de": None},
 }
 
+# 5d se inserta como bloque variable justo antes de la posición "6"
 ORDEN_FIJAS = [
     "1","2","3","4",
-    "5","5a","5d","5b","5c",         # 5d = Indicadores 441 (tras soportes de medición)
+    "5","5a","5b","5c",
+    # <<< Indicadores 441 (múltiples) se insertan aquí, antes de "6" >>>
     "6","7",
     "8","9",
     "10","11",
@@ -158,7 +157,7 @@ DETECTORES = {
     "efectiva":             {"13b","13c"},
     "escalamiento":         {"13d"},
     "inasistencia":         {"13e"},
-    "calidad":              {"5a","5b","5c","5d"},
+    "calidad":              {"5a","5b","5c"},
     "protesis":             {"12a","12b"},
     "pila":                 {"9"},
     "consumo":              {"13g"},
@@ -167,6 +166,9 @@ DETECTORES = {
 # Keywords que distinguen el tipo de acta de calidad
 KW_CALIDAD_CON = "acta de calidad con medicion"
 KW_CALIDAD_SIN = "acta de calidad sin medicion"
+
+# Keyword para Indicadores 441 (múltiples)
+KW_IND441 = "indicadores 441"
 
 KW_COMUNICACIONES = ["comunicaciones","comunicacion_","comunicaciones_"]
 KW_OTROS          = ["otros1","otros2","otros3","otros4","otros5",
@@ -213,6 +215,11 @@ def es_calidad_con_medicion(nombre):
 def es_calidad_sin_medicion(nombre):
     """True si el archivo es un acta de calidad SIN medición."""
     return norm(KW_CALIDAD_SIN) in norm(Path(nombre).stem)
+
+
+def es_indicadores441(nombre):
+    """True si el archivo es un Indicadores 441 (puede haber varios)."""
+    return norm(KW_IND441) in norm(Path(nombre).stem)
 
 
 def es_comunicacion(nombre):
@@ -299,21 +306,22 @@ def detectar_condiciones(pdfs):
 def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
     nombre = carpeta_informe.name
     res = {
-        "informe":        nombre,
-        "posiciones":     {
+        "informe":          nombre,
+        "posiciones":       {
             pid: {"nombre": info["nombre"], "archivo": None,
                   "presente": False, "depende_de": info["depende_de"],
                   "estado_celda": "?"}
             for pid, info in POSICIONES.items()
         },
-        "comunicaciones": [],
-        "otros":          [],
-        "sin_posicion":   [],
-        "eliminados":     [],
-        "errores_pdf":    [],
-        "condiciones":    set(),
-        "estado":         "",
-        "pdf_generado":   "",
+        "indicadores441":   [],   # ← lista variable, igual que comunicaciones
+        "comunicaciones":   [],
+        "otros":            [],
+        "sin_posicion":     [],
+        "eliminados":       [],
+        "errores_pdf":      [],
+        "condiciones":      set(),
+        "estado":           "",
+        "pdf_generado":     "",
     }
 
     # 1. Eliminar no-PDFs
@@ -322,24 +330,30 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
     # 2. Listar PDFs
     pdfs = pdfs_de(carpeta_informe)
 
-    # 3. Detectar condiciones (incluye calidad_con_medicion / calidad_sin_medicion)
+    # 3. Detectar condiciones
     res["condiciones"] = detectar_condiciones(pdfs)
 
-    # 4. Mapear cada PDF a su posición / comunicaciones / otros
+    # 4. Mapear cada PDF a su cubeta
     for pdf in pdfs:
-        pos = identificar_pos(pdf.name)
-        if pos:
-            if not res["posiciones"][pos]["presente"]:
-                res["posiciones"][pos]["archivo"]  = pdf
-                res["posiciones"][pos]["presente"] = True
-            else:
-                res["sin_posicion"].append(f"{pdf.name}  [dup pos {pos}]")
-        elif es_comunicacion(pdf.name):
-            res["comunicaciones"].append(pdf)
-        elif es_otro(pdf.name):
-            res["otros"].append(pdf)
+        # Indicadores 441 tiene prioridad antes de identificar_pos,
+        # porque su nombre contiene "indicadores" que podría coincidir
+        # con keywords de pos 5 ("indicadores gestion", etc.)
+        if es_indicadores441(pdf.name):
+            res["indicadores441"].append(pdf)
         else:
-            res["sin_posicion"].append(pdf.name)
+            pos = identificar_pos(pdf.name)
+            if pos:
+                if not res["posiciones"][pos]["presente"]:
+                    res["posiciones"][pos]["archivo"]  = pdf
+                    res["posiciones"][pos]["presente"] = True
+                else:
+                    res["sin_posicion"].append(f"{pdf.name}  [dup pos {pos}]")
+            elif es_comunicacion(pdf.name):
+                res["comunicaciones"].append(pdf)
+            elif es_otro(pdf.name):
+                res["otros"].append(pdf)
+            else:
+                res["sin_posicion"].append(pdf.name)
 
     # 5. Completar carátulas faltantes con las compartidas
     caratula_otros_compartida = None
@@ -364,6 +378,10 @@ def procesar_informe(carpeta_informe, carpeta_caratulas, carpeta_salida):
         info   = res["posiciones"][pid]
         dep    = info["depende_de"]
         aplica = (dep is None) or (dep in res["condiciones"])
+
+        # Insertar todos los Indicadores 441 antes de la posición "6"
+        if pid == "6":
+            lista_merge.extend(res["indicadores441"])
 
         # Carátula sección Otros (16a): solo si hay algún doc en esa sección
         if pid == "16a":
@@ -423,6 +441,7 @@ AM="FFEB9C"; AMF="7D6608"; RO="FFC7CE"; ROF="9C0006"
 GR="EDEDED"; GRF="595959"
 VER_OSC="2E6B3E"; NA_OSC="7D4E00"; CA_OSC="5D4037"
 CO_OSC="6A1B4D"   # morado oscuro = consumo
+IND_OSC="4A235A"  # púrpura oscuro = Indicadores 441
 
 def mk_borde():
     s = Side(style="thin", color="AAAAAA")
@@ -440,15 +459,27 @@ def cel(ws, r, c, v="", bold=False, sz=9, ct="000000",
 def color_hdr(pid):
     dep = POSICIONES.get(pid, {}).get("depende_de")
     if pid in ("comunicaciones","otros","14","16a"): return CA_OSC
+    if pid == "indicadores441":                      return IND_OSC
     if pid in ("13f","13g"):                         return CO_OSC
-    if pid in ("4", "5", "5d") or dep in ("calidad","calidad_con_medicion"): return VER_OSC
+    if dep in ("calidad","calidad_con_medicion"):    return VER_OSC
     if dep in ("visita","efectiva","escalamiento","inasistencia"): return NA_OSC
     return AZ
 
-ORDEN_EXCEL = ORDEN_FIJAS + ["comunicaciones","otros"]
+# ORDEN_EXCEL: columnas fijas + las tres listas variables en su posición lógica
+# Indicadores 441 va entre 5c y 6, igual que en el merge
+ORDEN_EXCEL_FIJAS = list(ORDEN_FIJAS)  # copia de las posiciones fijas
+# Insertamos la columna virtual "indicadores441" justo antes de "6"
+_idx6 = ORDEN_EXCEL_FIJAS.index("6")
+ORDEN_EXCEL_FIJAS.insert(_idx6, "indicadores441")
+# Añadimos comunicaciones y otros al final (igual que antes)
+ORDEN_EXCEL = ORDEN_EXCEL_FIJAS + ["comunicaciones", "otros"]
 
 def label_col(pid):
-    especiales = {"comunicaciones": "Comunicaciones\n(todas)", "otros": "Otros\n(todos)"}
+    especiales = {
+        "comunicaciones":  "Comunicaciones\n(todas)",
+        "otros":           "Otros\n(todos)",
+        "indicadores441":  "Indicadores 441\n(todos)",
+    }
     if pid in especiales: return especiales[pid]
     return f"Pos {pid}\n{POSICIONES[pid]['nombre']}"
 
@@ -472,11 +503,11 @@ def generar_excel(resultados, nombre_analista, ruta):
     CV   = CE + 1
     CTV  = CV + 1
     CQ   = CTV + 1
-    CTCQ = CQ + 1    # TIPO CALIDAD (con/sin medición)
+    CTCQ = CQ + 1
     CPR  = CTCQ + 1
     CPIL = CPR + 1
     CCON = CPIL + 1
-    CO   = CCON + 1  # OBSERVACIONES
+    CO   = CCON + 1
 
     cel(ws, FH, CI, "INFORME / RESPONSABLE", bold=True, sz=9, ct="FFFFFF", fc=AZ, bd=B)
     for i, pid in enumerate(ORDEN_EXCEL):
@@ -496,6 +527,13 @@ def generar_excel(resultados, nombre_analista, ruta):
 
         for i, pid in enumerate(ORDEN_EXCEL):
             col = CP0 + i
+
+            # ── columnas de listas variables ──────────────────────────
+            if pid == "indicadores441":
+                n = len(res["indicadores441"])
+                cel(ws, row, col, str(n) if n else "—", sz=9,
+                    ct=(VEF if n else GRF), fc=(VE if n else GR), bd=B)
+                continue
             if pid == "comunicaciones":
                 n = len(res["comunicaciones"])
                 cel(ws, row, col, str(n) if n else "—", sz=9,
@@ -506,6 +544,8 @@ def generar_excel(resultados, nombre_analista, ruta):
                 cel(ws, row, col, str(n) if n else "—", sz=9,
                     ct=(VEF if n else GRF), fc=(VE if n else GR), bd=B)
                 continue
+
+            # ── posiciones fijas ──────────────────────────────────────
             ec = res["posiciones"][pid].get("estado_celda","?")
             if   ec=="SI":  fc,ft,bo = VE,  VEF, False
             elif ec=="NO":  fc,ft,bo = AM,  AMF, True
@@ -519,7 +559,7 @@ def generar_excel(resultados, nombre_analista, ruta):
         cel(ws, row, CE, est, bold=True, sz=9, ct=ft, fc=fe, bd=B)
 
         conds = res.get("condiciones", set())
-        cel(ws, row, CV,   "SÍ" if "visita"  in conds else "NO", sz=9, bd=B)
+        cel(ws, row, CV, "SÍ" if "visita" in conds else "NO", sz=9, bd=B)
 
         tipo_v = ("EFECTIVA"     if "efectiva"     in conds else
                   "ESCALAMIENTO" if "escalamiento" in conds else
@@ -527,12 +567,10 @@ def generar_excel(resultados, nombre_analista, ruta):
         tv_color = ("375623" if tipo_v=="EFECTIVA" else
                     "7D4E00" if tipo_v=="ESCALAMIENTO" else
                     "9C0006" if tipo_v=="INASISTENCIA" else GRF)
-        cel(ws, row, CTV,  tipo_v, bold=(tipo_v!="—"), sz=9, ct=tv_color, bd=B)
+        cel(ws, row, CTV, tipo_v, bold=(tipo_v!="—"), sz=9, ct=tv_color, bd=B)
 
-        # Calidad: SÍ / NO
-        cel(ws, row, CQ,   "SÍ" if "calidad" in conds else "NO", sz=9, bd=B)
+        cel(ws, row, CQ, "SÍ" if "calidad" in conds else "NO", sz=9, bd=B)
 
-        # Tipo calidad: CON MEDICIÓN / SIN MEDICIÓN / —
         if "calidad_con_medicion" in conds:
             tipo_cq, cq_color = "CON MEDICIÓN", VEF
         elif "calidad_sin_medicion" in conds:
@@ -593,11 +631,12 @@ def generar_excel(resultados, nombre_analista, ruta):
     fl3 = fl2 + 2
     ws.cell(fl3, CI, "Grupos:").font = Font(name="Arial", bold=True, size=9)
     for j, (lbl, fc, desc) in enumerate([
-        ("Siempre",    AZ,      "Obligatorio en todos los informes"),
-        ("Calidad",    VER_OSC, "Solo si hay medición de calidad (5a/5b/5c/5d)"),
-        ("Visita",     NA_OSC,  "Solo si hubo visita (efectiva/escalamiento/inasistencia)"),
-        ("Consumo",    CO_OSC,  "Solo si hay Acta de Consumo (13f carátula + 13g acta)"),
-        ("Com/Otros",  CA_OSC,  "Comunicaciones y Otros (archivos múltiples)"),
+        ("Siempre",       AZ,      "Obligatorio en todos los informes"),
+        ("Calidad",       VER_OSC, "Solo si hay medición de calidad (5a/5b/5c)"),
+        ("Visita",        NA_OSC,  "Solo si hubo visita (efectiva/escalamiento/inasistencia)"),
+        ("Consumo",       CO_OSC,  "Solo si hay Acta de Consumo (13f carátula + 13g acta)"),
+        ("Com/Otros",     CA_OSC,  "Comunicaciones y Otros (archivos múltiples)"),
+        ("Ind. 441",      IND_OSC, "Indicadores 441 (múltiples, opcionales)"),
     ]):
         col = CI+1+j*2
         cel(ws, fl3, col, lbl, bold=True, sz=9, ct="FFFFFF", fc=fc, bd=B)
@@ -637,7 +676,7 @@ def main(ruta_raiz_str):
 
     sep = "═"*64
     print(f"\n{sep}")
-    print(f"  UNIFICADOR DE PDFs  v6.2  —  Analista: {nombre_analista}")
+    print(f"  UNIFICADOR DE PDFs  v6.3  —  Analista: {nombre_analista}")
     print(f"{sep}")
     print(f"  Raiz     : {raiz}")
     print(f"  Informes : {len(informes)}")
@@ -654,7 +693,6 @@ def main(ruta_raiz_str):
         if   "efectiva"     in conds: info_str += " [visita:EFECTIVA]"
         elif "escalamiento" in conds: info_str += " [visita:ESCALAMIENTO]"
         elif "inasistencia" in conds: info_str += " [visita:INASISTENCIA]"
-        # Calidad: mostrar sub-tipo
         if "calidad_con_medicion" in conds: info_str += " [calidad:CON MEDICIÓN]"
         elif "calidad_sin_medicion" in conds: info_str += " [calidad:SIN MEDICIÓN]"
         elif "calidad" in conds: info_str += " [calidad]"
@@ -662,10 +700,12 @@ def main(ruta_raiz_str):
         if "pila"     in conds: info_str += " [pila]"
         else:                   info_str += " [sin pila]"
         if "consumo"  in conds: info_str += " [consumo]"
-        n_com = len(res["comunicaciones"])
-        n_otr = len(res["otros"])
-        if n_com: info_str += f" [{n_com} comunic.]"
-        if n_otr: info_str += f" [{n_otr} otros]"
+        n_i441 = len(res["indicadores441"])
+        n_com  = len(res["comunicaciones"])
+        n_otr  = len(res["otros"])
+        if n_i441: info_str += f" [{n_i441} ind.441]"
+        if n_com:  info_str += f" [{n_com} comunic.]"
+        if n_otr:  info_str += f" [{n_otr} otros]"
 
         ic = ("✔" if res["estado"]=="Unificado Completo" else
               "⚠" if "Incompleto" in res["estado"] else "✖")
