@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 r"""
 ╔══════════════════════════════════════════════════════════════════════╗
-║         UNIFICADOR DE PDFs POR CONTRATO  v6.1                       ║
+║         UNIFICADOR DE PDFs POR CONTRATO  v6.2                       ║
 ║                                                                      ║
 ║  Uso:  python unificacion.py "C:\ruta\analista"                      ║
 ║  Req:  pip install pypdf openpyxl                                    ║
@@ -51,6 +51,10 @@ POSICIONES = {
     "5c":  {"nombre": "Soportes de Medición",
              "keywords": ["soportes de medicion","soportes medicion"],
              "requerido": False, "depende_de": "calidad_con_medicion"},
+    # ── 5d: Indicadores 441 (opcional, sin dependencia) ──────────────
+    "5d":  {"nombre": "Indicadores 441",
+             "keywords": ["indicadores 441"],
+             "requerido": False, "depende_de": None},
     "6":   {"nombre": "Carátula Relación de Pagos",
              "keywords": ["caratula relacion de pagos","caratula relacion pagos",
                           "car relacion pagos"],
@@ -134,7 +138,7 @@ POSICIONES = {
 
 ORDEN_FIJAS = [
     "1","2","3","4",
-    "5","5a","5b","5c",
+    "5","5a","5d","5b","5c",         # 5d = Indicadores 441 (tras soportes de medición)
     "6","7",
     "8","9",
     "10","11",
@@ -154,7 +158,7 @@ DETECTORES = {
     "efectiva":             {"13b","13c"},
     "escalamiento":         {"13d"},
     "inasistencia":         {"13e"},
-    "calidad":              {"5a","5b","5c"},
+    "calidad":              {"5a","5b","5c","5d"},
     "protesis":             {"12a","12b"},
     "pila":                 {"9"},
     "consumo":              {"13g"},
@@ -437,7 +441,7 @@ def color_hdr(pid):
     dep = POSICIONES.get(pid, {}).get("depende_de")
     if pid in ("comunicaciones","otros","14","16a"): return CA_OSC
     if pid in ("13f","13g"):                         return CO_OSC
-    if dep in ("calidad","calidad_con_medicion"):    return VER_OSC
+    if pid in ("4", "5", "5d") or dep in ("calidad","calidad_con_medicion"): return VER_OSC
     if dep in ("visita","efectiva","escalamiento","inasistencia"): return NA_OSC
     return AZ
 
@@ -590,7 +594,7 @@ def generar_excel(resultados, nombre_analista, ruta):
     ws.cell(fl3, CI, "Grupos:").font = Font(name="Arial", bold=True, size=9)
     for j, (lbl, fc, desc) in enumerate([
         ("Siempre",    AZ,      "Obligatorio en todos los informes"),
-        ("Calidad",    VER_OSC, "Solo si hay medición de calidad (5a/5b/5c)"),
+        ("Calidad",    VER_OSC, "Solo si hay medición de calidad (5a/5b/5c/5d)"),
         ("Visita",     NA_OSC,  "Solo si hubo visita (efectiva/escalamiento/inasistencia)"),
         ("Consumo",    CO_OSC,  "Solo si hay Acta de Consumo (13f carátula + 13g acta)"),
         ("Com/Otros",  CA_OSC,  "Comunicaciones y Otros (archivos múltiples)"),
@@ -633,7 +637,7 @@ def main(ruta_raiz_str):
 
     sep = "═"*64
     print(f"\n{sep}")
-    print(f"  UNIFICADOR DE PDFs  v6.1  —  Analista: {nombre_analista}")
+    print(f"  UNIFICADOR DE PDFs  v6.2  —  Analista: {nombre_analista}")
     print(f"{sep}")
     print(f"  Raiz     : {raiz}")
     print(f"  Informes : {len(informes)}")
